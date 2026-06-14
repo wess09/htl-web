@@ -66,7 +66,6 @@ const navItems = [
   { label: '城市概览', path: '/' },
   { label: '探索海特洛', path: '/explore' },
   { label: '异象事务', path: '/anomaly' },
-  { label: '居民服务', path: '/services' },
   { label: '城市动态', path: '/news' },
 ]
 
