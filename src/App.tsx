@@ -38,7 +38,6 @@ import {
   Search,
   ShieldCheck,
   TrainFront,
-  Users,
   Zap,
   type LucideIcon,
 } from 'lucide-react'
