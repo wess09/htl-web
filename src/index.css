@@ -1,0 +1,62 @@
+:root {
+  --red: #c9141f;
+  --red-dark: #9f0f18;
+  --ink: #151923;
+  --muted: #687286;
+  --soft: #f6f7fa;
+  --line: #e5e8ef;
+  --paper: #fff;
+  font-family:
+    Inter, "Noto Sans SC", "Microsoft YaHei", "PingFang SC", system-ui,
+    sans-serif;
+  color: var(--ink);
+  background: #fff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+}
+
+img {
+  display: block;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  border-radius: 6px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  color: #fff;
+  background: var(--red);
+}
