@@ -14,7 +14,6 @@ import {
   CircleHelp,
   Clock3,
   CloudSun,
-  Compass,
   Cross,
   Eye,
   FileCheck2,
@@ -27,6 +26,7 @@ import {
   IdCard,
   Landmark,
   Leaf,
+  Ship,
   Map,
   MapPin,
   Menu,
@@ -37,10 +37,8 @@ import {
   Scale,
   Search,
   ShieldCheck,
-  Sparkles,
   TrainFront,
   Users,
-  Waves,
   Zap,
   type LucideIcon,
 } from 'lucide-react'
@@ -71,15 +69,14 @@ const navItems = [
   { label: '异象事务', path: '/anomaly' },
   { label: '居民服务', path: '/services' },
   { label: '城市动态', path: '/news' },
-  { label: '关于', path: '/about' },
 ]
 
 const stats = [
-  { label: '城市定位', value: '开放都市', note: '日常与异象并行', icon: Users },
-  { label: '主要区域', value: '多片区', note: '以公开资料为准', icon: Building2 },
-  { label: '异象事务', value: '常态化', note: '委托、观测与处置', icon: RadioTower },
-  { label: '出行方式', value: '多类型', note: '街区、轨道与道路', icon: TrainFront },
-  { label: '探索内容', value: '持续更新', note: '资料随官方信息补充', icon: Leaf },
+  { label: '金融商业', value: '新赫兰德区', note: '企业总部与高层写字楼聚集', icon: Building2 },
+  { label: '滨海旅游', value: '米格尔区', note: '海岸线、码头与主题公园', icon: Ship },
+  { label: '传统生活', value: '绘空町', note: '商业街、学校与老式住宅', icon: Home },
+  { label: '旧港灰域', value: '未闻浦', note: '废弃码头、黑市与隐藏线索', icon: BriefcaseBusiness },
+  { label: '交通枢纽', value: '桥间地', note: '铁路、物流与城际换乘中心', icon: TrainFront },
 ]
 
 const values = [
@@ -114,16 +111,16 @@ const highlights = [
 ]
 
 const exploreSpots = [
-  { title: '米格尔区', tag: '滨海旅游区', img: images.reef, icon: Waves, text: '海岸、观景区域、游艇码头与大型主题公园集中于此。' },
-  { title: '绘空町', tag: '传统生活区', img: images.blossom, icon: MapPin, text: '商业街、住宅区、学校与本地文化中心构成浓厚生活氛围。' },
-  { title: '未闻浦', tag: '旧港与灰色地带', img: images.market, icon: Compass, text: '废弃码头、仓库群与黑市交易区交织，隐藏探索内容较多。' },
-  { title: '新赫兰德区', tag: '金融与商业核心区', img: images.skyline, icon: Landmark, text: '企业总部、高层写字楼与全市最高地价共同塑造不夜城。' },
+  { title: '米格尔区', tag: '滨海旅游区', img: images.reef, text: '海岸、观景区域、游艇码头与大型主题公园集中于此。' },
+  { title: '绘空町', tag: '传统生活区', img: images.blossom, text: '商业街、住宅区、学校与本地文化中心构成浓厚生活氛围。' },
+  { title: '未闻浦', tag: '旧港与灰色地带', img: images.market, text: '废弃码头、仓库群与黑市交易区交织，隐藏探索内容较多。' },
+  { title: '新赫兰德区', tag: '金融与商业核心区', img: images.skyline, text: '企业总部、高层写字楼与全市最高地价共同塑造不夜城。' },
 ]
 
 const anomalyCards = [
-  { title: '米格尔区海底异常', level: '高频传闻', img: images.reef, icon: Waves, text: '海底遗迹与异常活动相关传闻较多，是调查机构长期关注的区域。' },
-  { title: '未闻浦旧港事件', level: '隐藏线索', img: images.hall, icon: RadioTower, text: '废弃码头、仓库群与黑市交易区附近常有无法确认的目击记录。' },
-  { title: '新赫兰德都市怪谈', level: '企业传闻', img: images.comet, icon: Sparkles, text: '部分企业被传秘密参与异常研究，高层楼宇间流传着都市怪谈。' },
+  { title: '米格尔区海底异常', level: '高频传闻', img: images.reef, text: '海底遗迹与异常活动相关传闻较多，是调查机构长期关注的区域。' },
+  { title: '未闻浦旧港事件', level: '隐藏线索', img: images.hall, text: '废弃码头、仓库群与黑市交易区附近常有无法确认的目击记录。' },
+  { title: '新赫兰德都市怪谈', level: '企业传闻', img: images.comet, text: '部分企业被传秘密参与异常研究，高层楼宇间流传着都市怪谈。' },
 ]
 
 const serviceEntries = [
@@ -155,19 +152,35 @@ function IconCard({ title, text, icon: Icon }: IconCardProps) {
   )
 }
 
-function SectionTitle({ kicker, title, action }: { kicker?: string; title: string; action?: string }) {
+function SectionTitle({
+  kicker,
+  title,
+  action,
+  actionHref,
+}: {
+  kicker?: string
+  title: string
+  action?: string
+  actionHref?: string
+}) {
   return (
     <div className="section-title">
       <div>
         {kicker && <span>{kicker}</span>}
         <h2>{title}</h2>
       </div>
-      {action && (
-        <Link to="/news">
-          {action}
-          <ChevronRight size={16} />
-        </Link>
-      )}
+      {action &&
+        (actionHref ? (
+          <a href={actionHref} target="_blank" rel="noreferrer">
+            {action}
+            <ChevronRight size={16} />
+          </a>
+        ) : (
+          <Link to="/news">
+            {action}
+            <ChevronRight size={16} />
+          </Link>
+        ))}
     </div>
   )
 }
@@ -244,7 +257,7 @@ function Footer() {
           </a>
         ))}
       </div>
-      <p>© 2026 海特洛市人民政府 版权所有　ICP备案号：HTL-20260001</p>
+      <p>© 2026 海特洛市人民政府工业与信息化部 　ICP备案号：HTL-21600001</p>
     </footer>
   )
 }
@@ -273,10 +286,10 @@ function Overview() {
   return (
     <>
       <Hero title="城市概览" subtitle="超自然与现代文明共生的活力都市" image={images.skyline}>
-        <p className="hero-copy">基于《异环》公开资料整理的海特洛城市门户，用于浏览城市信息、异象事务、居民指南与动态文章。</p>
+        <p className="hero-copy">海特洛市是一座现代文明与超自然现象共存的海湾都市。繁华与神秘在这里交织，每一天都可能邂逅新的故事与未知。</p>
       </Hero>
       <section className="panel lift">
-        <SectionTitle title="城市关键数据" />
+        <SectionTitle title="五区速览" />
         <div className="stats-grid">
           {stats.map(({ icon: Icon, ...item }) => (
             <article className="stat-card" key={item.label}>
@@ -352,16 +365,20 @@ function Explore() {
     <>
       <Hero title="探索海特洛" subtitle="从海底光廊到樱花坡道，发现城市的多重面貌" image={images.reef} />
       <section className="panel lift">
-        <SectionTitle kicker="Visit" title="推荐目的地" action="查看地图" />
+        <SectionTitle
+          kicker="Visit"
+          title="推荐目的地"
+          action="查看地图"
+          actionHref="https://www.3839.com/hykb/hykb_tools/yihuan/map/"
+        />
         <div className="spot-grid">
-          {exploreSpots.map(({ icon: Icon, ...spot }) => (
+          {exploreSpots.map((spot) => (
             <article className="spot-card" key={spot.title}>
               <img src={spot.img} alt="" />
               <div>
                 <span>{spot.tag}</span>
                 <h3>{spot.title}</h3>
                 <p>{spot.text}</p>
-                <Icon />
               </div>
             </article>
           ))}
@@ -391,19 +408,22 @@ function Anomaly() {
     <>
       <Hero title="异象事务" subtitle="城市异常现象监测、公开说明与协同治理平台" image={images.comet}>
         <div className="hero-actions">
-          <a href="#alerts">查看播报</a>
-          <a href="#report">提交线索</a>
+          <a href="https://github.com/wess09/htl-web/issues" target="_blank" rel="noreferrer">
+            查看播报
+          </a>
+          <a href="https://github.com/wess09/htl-web/issues/new" target="_blank" rel="noreferrer">
+            提交线索
+          </a>
         </div>
       </Hero>
       <section className="panel lift" id="alerts">
         <SectionTitle title="异象监测播报" action="历史记录" />
         <div className="anomaly-grid">
-          {anomalyCards.map(({ icon: Icon, ...card }) => (
+          {anomalyCards.map((card) => (
             <article className="anomaly-card" key={card.title}>
               <img src={card.img} alt="" />
               <div>
                 <span>{card.level}</span>
-                <Icon />
                 <h3>{card.title}</h3>
                 <p>{card.text}</p>
               </div>
@@ -436,7 +456,9 @@ function Anomaly() {
           <AlertTriangle />
           <h2>公众提示</h2>
           <p>遇到未知发光、异常低温、重复回声或空间错位，请保持距离并记录时间地点，勿自行接触。</p>
-          <button>一键上报</button>
+          <a className="report-button" href="https://github.com/wess09/htl-web/issues/new" target="_blank" rel="noreferrer">
+            一键上报
+          </a>
         </article>
       </section>
     </>
