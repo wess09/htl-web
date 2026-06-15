@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "htl-comments",
-      "database_id": "replace-with-your-d1-database-id",
+      "database_id": "14cac81b-d868-4277-84b8-9e683ccc5a6b",
       "migrations_dir": "migrations"
     }
   ],
