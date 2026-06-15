@@ -142,7 +142,7 @@ async function createComment(request: Request, env: Env, rawSlug: string) {
 
   const moderation = await moderateComment(env, parsed.authorName, parsed.content)
   if (moderation === 'unavailable') {
-    return json({ error: '自动审核暂时不可用，请稍后再试' }, 503)
+    return json({ code: 'AI_UNAVAILABLE', error: '自动审核暂时不可用，请稍后再试' }, 503)
   }
 
   if (moderation === 'reject') {
@@ -183,7 +183,7 @@ async function ensureSchemaResponse(env: Env) {
     await ensureCommentsSchema(env)
     return null
   } catch {
-    return json({ error: '评论数据库暂时不可用，请稍后再试' }, 503)
+    return json({ code: 'D1_UNAVAILABLE', error: '评论数据库暂时不可用，请稍后再试' }, 503)
   }
 }
 
@@ -254,11 +254,10 @@ function parseCommentPayload(payload: unknown) {
 async function moderateComment(env: Env, authorName: string, content: string): Promise<ModerationDecision> {
   try {
     const prompt = [
-      '你是海特洛市网站评论区的中文内容审核员。',
-      '请判断用户评论是否可以公开展示。',
-      '如果包含人身攻击、仇恨、色情、暴力威胁、违法交易、隐私泄露、广告垃圾信息或明显破坏讨论秩序的内容，标记为 reject。',
-      '如果只是轻微负面意见、正常吐槽、城市设定讨论或无害玩笑，标记为 approve。',
-      '只返回 JSON，不要返回 Markdown。格式：{"decision":"approve|reject","reason":"简短中文理由"}',
+      '审核下面这条中文评论是否可以公开展示。',
+      '规则：人身攻击、仇恨、色情、暴力威胁、违法交易、隐私泄露、广告垃圾信息或明显破坏讨论秩序，输出 REJECT。',
+      '正常讨论、轻微负面意见、普通吐槽、城市设定讨论或无害玩笑，输出 APPROVE。',
+      '只输出一个大写单词：APPROVE 或 REJECT。不要解释，不要 Markdown，不要 JSON。',
       `昵称：${authorName}`,
       `评论：${content}`,
     ].join('\n')
@@ -267,44 +266,66 @@ async function moderateComment(env: Env, authorName: string, content: string): P
       messages: [
         {
           role: 'system',
-          content: '你只输出符合要求的 JSON。',
+          content: 'You are a strict moderation classifier. Reply with exactly one token: APPROVE or REJECT.',
         },
         {
           role: 'user',
           content: prompt,
         },
       ],
-      max_tokens: 180,
+      max_tokens: 51200,
       temperature: 0,
     })
 
-    return parseModerationDecision(extractAiText(result))
+    return parseModerationDecision(result)
   } catch (error) {
     console.warn('Workers AI moderation failed', error)
     return 'unavailable'
   }
 }
 
-function parseModerationDecision(text: string): ModerationDecision {
+function parseModerationDecision(result: unknown): ModerationDecision {
+  if (isSensitiveResponse(result)) {
+    return 'reject'
+  }
+
+  const text = extractAiText(result).trim()
   const jsonText = text.match(/\{[\s\S]*\}/)?.[0]
-  if (!jsonText) {
-    return 'unavailable'
+  if (jsonText) {
+    try {
+      const parsed = JSON.parse(jsonText) as Record<string, unknown>
+      const decision = String(parsed.decision ?? parsed.result ?? parsed.label ?? '').toLowerCase()
+      if (decision.includes('approve')) {
+        return 'approve'
+      }
+
+      if (decision.includes('reject')) {
+        return 'reject'
+      }
+    } catch {
+      return 'unavailable'
+    }
   }
 
-  try {
-    const parsed = JSON.parse(jsonText) as Record<string, unknown>
-    if (parsed.decision === 'approve') {
-      return 'approve'
-    }
-
-    if (parsed.decision === 'reject') {
-      return 'reject'
-    }
-
-    return 'unavailable'
-  } catch {
-    return 'unavailable'
+  const normalized = text.toUpperCase()
+  if (/\bAPPROVE\b/.test(normalized)) {
+    return 'approve'
   }
+
+  if (/\bREJECT\b/.test(normalized)) {
+    return 'reject'
+  }
+
+  return 'unavailable'
+}
+
+function isSensitiveResponse(result: unknown) {
+  if (!result || typeof result !== 'object') {
+    return false
+  }
+
+  const response = result as Record<string, unknown>
+  return response.input_sensitive === true || response.output_sensitive === true
 }
 
 function extractAiText(result: unknown) {
