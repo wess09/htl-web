@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "cf:dev": "npm run build && wrangler dev",
-    "cf:deploy": "npm run build && wrangler deploy",
+    "cf:deploy": "npm run build && wrangler d1 migrations apply htl-comments --remote && wrangler deploy",
+    "deploy": "npm run cf:deploy",
     "cf:d1:migrate:local": "wrangler d1 migrations apply htl-comments --local",
     "cf:d1:migrate:remote": "wrangler d1 migrations apply htl-comments --remote"
   },

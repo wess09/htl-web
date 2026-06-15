@@ -52,6 +52,7 @@ const allowedMethods = 'GET, POST, OPTIONS'
 const commentPathPattern = /^\/api\/comments\/([^/]+)$/
 const maxAuthorLength = 32
 const maxContentLength = 800
+let schemaReady: Promise<void> | null = null
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -94,6 +95,11 @@ async function listComments(env: Env, rawSlug: string) {
     return json({ error: '文章路径无效' }, 400)
   }
 
+  const schemaResponse = await ensureSchemaResponse(env)
+  if (schemaResponse) {
+    return schemaResponse
+  }
+
   const { results = [] } = await env.DB.prepare(
     `SELECT id, article_slug, author_name, content, created_at
      FROM comments
@@ -125,6 +131,11 @@ async function createComment(request: Request, env: Env, rawSlug: string) {
   const parsed = parseCommentPayload(payload)
   if ('error' in parsed) {
     return json({ error: parsed.error }, 400)
+  }
+
+  const schemaResponse = await ensureSchemaResponse(env)
+  if (schemaResponse) {
+    return schemaResponse
   }
 
   const allowed = await isCommentAllowed(env, parsed.authorName, parsed.content)
@@ -159,6 +170,51 @@ async function createComment(request: Request, env: Env, rawSlug: string) {
     },
     201,
   )
+}
+
+async function ensureSchemaResponse(env: Env) {
+  try {
+    await ensureCommentsSchema(env)
+    return null
+  } catch {
+    return json({ error: '评论数据库暂时不可用，请稍后再试' }, 503)
+  }
+}
+
+async function ensureCommentsSchema(env: Env) {
+  if (!schemaReady) {
+    schemaReady = createCommentsSchema(env).catch((error) => {
+      schemaReady = null
+      throw error
+    })
+  }
+
+  return schemaReady
+}
+
+async function createCommentsSchema(env: Env) {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS comments (
+      id TEXT PRIMARY KEY,
+      article_slug TEXT NOT NULL,
+      author_name TEXT NOT NULL,
+      content TEXT NOT NULL,
+      ip_hash TEXT,
+      user_agent TEXT,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+      updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    )`,
+  ).run()
+
+  await env.DB.prepare(
+    `CREATE INDEX IF NOT EXISTS comments_article_created_idx
+     ON comments (article_slug, created_at DESC)`,
+  ).run()
+
+  await env.DB.prepare(
+    `CREATE INDEX IF NOT EXISTS comments_created_idx
+     ON comments (created_at DESC)`,
+  ).run()
 }
 
 function parseCommentPayload(payload: unknown) {

@@ -26,8 +26,7 @@ npx wrangler d1 create htl-comments
 然后执行迁移、构建并部署：
 
 ```sh
-npm run cf:d1:migrate:remote
-npm run cf:deploy
+npm run deploy
 ```
 
 本地调试 Cloudflare Worker：
