@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cf:dev": "npm run build && wrangler dev",
+    "cf:deploy": "npm run build && wrangler deploy",
+    "cf:d1:migrate:local": "wrangler d1 migrations apply htl-comments --local",
+    "cf:d1:migrate:remote": "wrangler d1 migrations apply htl-comments --remote"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -28,6 +32,7 @@
     "globals": "^17.6.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12"
+    "vite": "^8.0.12",
+    "wrangler": "^4.50.0"
   }
 }

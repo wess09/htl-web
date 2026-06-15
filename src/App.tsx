@@ -36,12 +36,13 @@ import {
   RadioTower,
   Scale,
   Search,
+  Send,
   ShieldCheck,
   TrainFront,
   Zap,
   type LucideIcon,
 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, NavLink, Route, Routes, useParams } from 'react-router-dom'
 import './App.css'
 import { articles, getArticle } from './data/articles'
@@ -109,12 +110,31 @@ const highlights = [
 ]
 
 const exploreSpots = [
-  { title: '米格尔区', tag: '滨海旅游区', img: images.reef, text: '海岸、观景区域、游艇码头与大型主题公园集中于此。' },
-  { title: '绘空町', tag: '传统生活区', img: images.blossom, text: '商业街、住宅区、学校与本地文化中心构成浓厚生活氛围。' },
-  { title: '未闻浦', tag: '旧港与灰色地带', img: images.market, text: '废弃码头、仓库群与黑市交易区交织，隐藏探索内容较多。' },
-  { title: '新赫兰德区', tag: '金融与商业核心区', img: images.skyline, text: '企业总部、高层写字楼与全市最高地价共同塑造不夜城。' },
+  {
+    title: '米格尔区',
+    tag: '滨海新城',
+    img: images.reef,
+    text: '漫步海岸步道，感受海风与城市相遇的浪漫。'
+  },
+  {
+    title: '绘空町',
+    tag: '传统街区',
+    img: images.blossom,
+    text: '在樱花与旧街之间，寻找属于海特洛的日常。'
+  },
+  {
+    title: '未闻浦',
+    tag: '旧港城区',
+    img: images.market,
+    text: '迷雾笼罩的港湾深处，埋藏着无人知晓的秘密。'
+  },
+  {
+    title: '新赫兰德区',
+    tag: '金融中心',
+    img: images.skyline,
+    text: '霓虹映照天际线，见证海特洛最耀眼的未来。'
+  }
 ]
-
 const anomalyCards = [
   { title: '米格尔区海底异常', level: '高频传闻', img: images.reef, text: '海底遗迹与异常活动相关传闻较多，是调查机构长期关注的区域。' },
   { title: '未闻浦旧港事件', level: '隐藏线索', img: images.hall, text: '废弃码头、仓库群与黑市交易区附近常有无法确认的目击记录。' },
@@ -131,6 +151,14 @@ const serviceEntries = [
   { title: '生活缴费', text: '水电燃气、话费', icon: Zap },
   { title: '应急求助', text: '报警、急救、救援', icon: BellRing },
 ]
+
+type Comment = {
+  id: string
+  articleSlug: string
+  authorName: string
+  content: string
+  createdAt: string
+}
 
 type IconCardProps = {
   title: string
@@ -211,7 +239,7 @@ function Header() {
       <NavLink to="/" className="brand" aria-label="海特洛市首页">
         <img src="/logo.png" alt="" />
         <div>
-          <strong>海特洛市</strong>
+          <strong>海特洛市人民政府</strong>
           <span>HETHEREAU CITY</span>
         </div>
       </NavLink>
@@ -255,7 +283,7 @@ function Footer() {
           </a>
         ))}
       </div>
-      <p>© 2026 海特洛市人民政府工业与信息化部 　ICP备案号：HTL-21600001</p>
+      <p>© 2026 海特洛市人民政府工业与信息化部 ICP备案号：HTL-21600001</p>
     </footer>
   )
 }
@@ -470,7 +498,7 @@ function Services() {
         <div className="weather-widget">
           <CloudSun />
           <strong>18°C</strong>
-          <span>晴朗　海特洛时间 21:37</span>
+          <span>晴朗 海特洛时间 21:37</span>
         </div>
       </Hero>
       <section className="content-grid service-layout lift">
@@ -602,6 +630,149 @@ function News() {
   )
 }
 
+function CommentsSection({ articleSlug }: { articleSlug: string }) {
+  const [comments, setComments] = useState<Comment[]>([])
+  const [authorName, setAuthorName] = useState('')
+  const [content, setContent] = useState('')
+  const [loadingSlug, setLoadingSlug] = useState(articleSlug)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const isLoading = loadingSlug === articleSlug
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    fetch(`/api/comments/${encodeURIComponent(articleSlug)}`, {
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error ?? '评论加载失败')
+        }
+        setComments(Array.isArray(data.comments) ? data.comments : [])
+      })
+      .catch((error: Error) => {
+        if (error.name !== 'AbortError') {
+          setNotice({ type: 'error', text: error.message })
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoadingSlug('')
+        }
+      })
+
+    return () => controller.abort()
+  }, [articleSlug])
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setNotice(null)
+
+    if (!authorName.trim() || !content.trim()) {
+      setNotice({ type: 'error', text: '请填写昵称和评论内容' })
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const response = await fetch(`/api/comments/${encodeURIComponent(articleSlug)}`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          authorName,
+          content,
+        }),
+      })
+      const data = await response.json()
+
+      if (response.status === 201 && data.comment) {
+        setComments((current) => [data.comment, ...current])
+        setContent('')
+        setNotice({ type: 'success', text: data.message ?? '评论已发布' })
+        return
+      }
+
+      setNotice({ type: 'error', text: data.error ?? '评论提交失败' })
+    } catch {
+      setNotice({ type: 'error', text: '评论提交失败，请稍后再试' })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <section className="panel article-comments">
+      <SectionTitle title={`评论 ${comments.length}`} />
+      <form className="comment-form" onSubmit={handleSubmit}>
+        <label>
+          <span>昵称</span>
+          <input
+            maxLength={32}
+            name="authorName"
+            onChange={(event) => setAuthorName(event.target.value)}
+            placeholder="海特洛访客"
+            value={authorName}
+          />
+        </label>
+        <label className="comment-field">
+          <span>评论内容</span>
+          <textarea
+            maxLength={800}
+            name="content"
+            onChange={(event) => setContent(event.target.value)}
+            placeholder="写下你的看法"
+            rows={4}
+            value={content}
+          />
+        </label>
+        <div className="comment-actions">
+          <small>{content.length}/800</small>
+          <button disabled={isSubmitting} type="submit">
+            <Send size={16} />
+            {isSubmitting ? '审核中' : '提交评论'}
+          </button>
+        </div>
+        {notice && <p className={`comment-notice ${notice.type}`}>{notice.text}</p>}
+      </form>
+      <div className="comment-list">
+        {isLoading ? (
+          <p className="comment-empty">评论加载中</p>
+        ) : comments.length > 0 ? (
+          comments.map((comment) => (
+            <article className="comment-item" key={comment.id}>
+              <div>
+                <strong>{comment.authorName}</strong>
+                <time>{formatCommentTime(comment.createdAt)}</time>
+              </div>
+              <p>{comment.content}</p>
+            </article>
+          ))
+        ) : (
+          <p className="comment-empty">暂无评论，来留下第一条城市记录。</p>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function formatCommentTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
 function ArticleDetail() {
   const { slug } = useParams()
   const article = getArticle(slug)
@@ -640,6 +811,7 @@ function ArticleDetail() {
           </div>
         )}
       </article>
+      <CommentsSection articleSlug={article.slug} key={article.slug} />
     </>
   )
 }
