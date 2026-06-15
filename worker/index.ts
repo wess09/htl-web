@@ -273,7 +273,7 @@ async function moderateComment(env: Env, authorName: string, content: string): P
           content: prompt,
         },
       ],
-      max_tokens: 51200,
+      max_tokens: 8,
       temperature: 0,
     })
 

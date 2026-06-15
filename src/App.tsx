@@ -160,6 +160,14 @@ type Comment = {
   createdAt: string
 }
 
+type CommentResponse = {
+  accepted?: boolean
+  comment?: Comment
+  comments?: Comment[]
+  error?: string
+  message?: string
+}
+
 type IconCardProps = {
   title: string
   text: string
@@ -646,7 +654,7 @@ function CommentsSection({ articleSlug }: { articleSlug: string }) {
       signal: controller.signal,
     })
       .then(async (response) => {
-        const data = await response.json()
+        const data = await readCommentResponse(response)
         if (!response.ok) {
           throw new Error(data.error ?? '评论加载失败')
         }
@@ -687,10 +695,11 @@ function CommentsSection({ articleSlug }: { articleSlug: string }) {
           content,
         }),
       })
-      const data = await response.json()
+      const data = await readCommentResponse(response)
 
       if (response.status === 201 && data.comment) {
-        setComments((current) => [data.comment, ...current])
+        const comment = data.comment
+        setComments((current) => [comment, ...current])
         setContent('')
         setNotice({ type: 'success', text: data.message ?? '评论已发布' })
         return
@@ -762,6 +771,21 @@ function CommentsSection({ articleSlug }: { articleSlug: string }) {
       </div>
     </section>
   )
+}
+
+async function readCommentResponse(response: Response): Promise<CommentResponse> {
+  const text = await response.text()
+  if (!text) {
+    return {}
+  }
+
+  try {
+    return JSON.parse(text) as Record<string, unknown>
+  } catch {
+    return {
+      error: response.ok ? '评论接口返回格式异常' : `评论接口异常：${response.status}`,
+    }
+  }
 }
 
 function formatCommentTime(value: string) {
