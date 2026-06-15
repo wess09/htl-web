@@ -43,6 +43,8 @@ type PublicComment = {
   createdAt: string
 }
 
+type ModerationDecision = 'approve' | 'reject' | 'unavailable'
+
 const jsonHeaders = {
   'content-type': 'application/json; charset=utf-8',
   'cache-control': 'no-store',
@@ -138,9 +140,13 @@ async function createComment(request: Request, env: Env, rawSlug: string) {
     return schemaResponse
   }
 
-  const allowed = await isCommentAllowed(env, parsed.authorName, parsed.content)
-  if (!allowed) {
-    return json({ error: '评论未通过自动审核' }, 202)
+  const moderation = await moderateComment(env, parsed.authorName, parsed.content)
+  if (moderation === 'unavailable') {
+    return json({ error: '自动审核暂时不可用，请稍后再试' }, 503)
+  }
+
+  if (moderation === 'reject') {
+    return json({ accepted: false, message: '评论未通过自动审核' })
   }
 
   const id = crypto.randomUUID()
@@ -245,7 +251,7 @@ function parseCommentPayload(payload: unknown) {
   return { authorName, content }
 }
 
-async function isCommentAllowed(env: Env, authorName: string, content: string) {
+async function moderateComment(env: Env, authorName: string, content: string): Promise<ModerationDecision> {
   try {
     const prompt = [
       '你是海特洛市网站评论区的中文内容审核员。',
@@ -257,7 +263,7 @@ async function isCommentAllowed(env: Env, authorName: string, content: string) {
       `评论：${content}`,
     ].join('\n')
 
-    const result = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+    const result = await env.AI.run('minimax/m3', {
       messages: [
         {
           role: 'system',
@@ -272,23 +278,32 @@ async function isCommentAllowed(env: Env, authorName: string, content: string) {
       temperature: 0,
     })
 
-    return parseModerationDecision(extractAiText(result)) === 'approve'
-  } catch {
-    return false
+    return parseModerationDecision(extractAiText(result))
+  } catch (error) {
+    console.warn('Workers AI moderation failed', error)
+    return 'unavailable'
   }
 }
 
-function parseModerationDecision(text: string) {
+function parseModerationDecision(text: string): ModerationDecision {
   const jsonText = text.match(/\{[\s\S]*\}/)?.[0]
   if (!jsonText) {
-    return 'reject'
+    return 'unavailable'
   }
 
   try {
     const parsed = JSON.parse(jsonText) as Record<string, unknown>
-    return parsed.decision === 'approve' ? 'approve' : 'reject'
+    if (parsed.decision === 'approve') {
+      return 'approve'
+    }
+
+    if (parsed.decision === 'reject') {
+      return 'reject'
+    }
+
+    return 'unavailable'
   } catch {
-    return 'reject'
+    return 'unavailable'
   }
 }
 

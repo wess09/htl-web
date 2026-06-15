@@ -696,6 +696,11 @@ function CommentsSection({ articleSlug }: { articleSlug: string }) {
         return
       }
 
+      if (response.ok && data.accepted === false) {
+        setNotice({ type: 'error', text: data.message ?? '评论未通过自动审核' })
+        return
+      }
+
       setNotice({ type: 'error', text: data.error ?? '评论提交失败' })
     } catch {
       setNotice({ type: 'error', text: '评论提交失败，请稍后再试' })
