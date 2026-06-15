@@ -43,10 +43,7 @@ type PublicComment = {
   createdAt: string
 }
 
-type ModerationDecision = {
-  decision: 'approve' | 'reject' | 'unavailable'
-  debug?: string
-}
+type ModerationDecision = 'approve' | 'reject' | 'unavailable'
 
 const jsonHeaders = {
   'content-type': 'application/json; charset=utf-8',
@@ -144,11 +141,11 @@ async function createComment(request: Request, env: Env, rawSlug: string) {
   }
 
   const moderation = await moderateComment(env, parsed.authorName, parsed.content)
-  if (moderation.decision === 'unavailable') {
-    return json({ code: 'AI_UNAVAILABLE', debug: moderation.debug, error: '自动审核暂时不可用，请稍后再试' }, 503)
+  if (moderation === 'unavailable') {
+    return json({ code: 'AI_UNAVAILABLE', error: '自动审核暂时不可用，请稍后再试' }, 503)
   }
 
-  if (moderation.decision === 'reject') {
+  if (moderation === 'reject') {
     return json({ accepted: false, message: '评论未通过自动审核' })
   }
 
@@ -276,20 +273,20 @@ async function moderateComment(env: Env, authorName: string, content: string): P
           content: prompt,
         },
       ],
-      max_tokens: 8,
+      max_tokens: 800,
       temperature: 0,
     })
 
     return parseModerationDecision(result)
   } catch (error) {
     console.warn('Workers AI moderation failed', error)
-    return { decision: 'unavailable', debug: describeError(error) }
+    return 'unavailable'
   }
 }
 
 function parseModerationDecision(result: unknown): ModerationDecision {
   if (isSensitiveResponse(result)) {
-    return { decision: 'reject' }
+    return 'reject'
   }
 
   const text = extractAiText(result).trim()
@@ -299,27 +296,27 @@ function parseModerationDecision(result: unknown): ModerationDecision {
       const parsed = JSON.parse(jsonText) as Record<string, unknown>
       const decision = String(parsed.decision ?? parsed.result ?? parsed.label ?? '').toLowerCase()
       if (decision.includes('approve')) {
-        return { decision: 'approve' }
+        return 'approve'
       }
 
       if (decision.includes('reject')) {
-        return { decision: 'reject' }
+        return 'reject'
       }
     } catch {
-      return { decision: 'unavailable', debug: 'invalid-json-response' }
+      return 'unavailable'
     }
   }
 
   const normalized = text.toUpperCase()
   if (/\bAPPROVE\b/.test(normalized)) {
-    return { decision: 'approve' }
+    return 'approve'
   }
 
   if (/\bREJECT\b/.test(normalized)) {
-    return { decision: 'reject' }
+    return 'reject'
   }
 
-  return { decision: 'unavailable', debug: `unparsed-ai-response:${text.slice(0, 160)}` }
+  return 'unavailable'
 }
 
 function isSensitiveResponse(result: unknown) {
@@ -331,17 +328,13 @@ function isSensitiveResponse(result: unknown) {
   return response.input_sensitive === true || response.output_sensitive === true
 }
 
-function describeError(error: unknown) {
-  if (error instanceof Error) {
-    return `${error.name}: ${error.message}`.slice(0, 240)
-  }
-
-  return String(error).slice(0, 240)
-}
-
 function extractAiText(result: unknown) {
   if (typeof result === 'string') {
-    return result
+    try {
+      return extractAiText(JSON.parse(result))
+    } catch {
+      return result
+    }
   }
 
   if (!result || typeof result !== 'object') {
